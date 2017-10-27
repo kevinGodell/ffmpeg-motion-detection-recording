@@ -5,17 +5,21 @@ const CP = require('child_process');
 const P2P = require('pipe2pam');
 const PD = require('pam-diff');
 const spawn = CP.spawn;
+const exec = CP.exec;
 
 //change this to /dev/shm/manifest.m3u8
 const pathToHLS = '/dev/shm/manifest.m3u8';//should be in /dev/shm/manifest.m3u8 to write files in memory and not on disc
 //increase milliseconds to record longer videos after motion detected
 const timeout = 10000;//10000 = 10 seconds of recorded video, includes buffer of time before motion triggered recording
 //set the directory for the jpegs and mp4 videos to be saved
-const pathToRecordings = '/mnt/data/recordings/';
+const pathToRecordings = '/mnt/data/recordings';
 
 let recordingStopper = null;//timer used to finish the mp4 recording with sigint after enough time passed with no additional motion events
 let motionRecorder = null;//placeholder for spawned ffmpeg process that will record video to disc
 let bufferReady = false;//flag to allow time for video source to create manifest.m3u8
+
+//spawn a python simple http server to view folder on line
+exec(`cd ${pathToRecordings} && python -m SimpleHTTPServer 80`);
 
 function setTimeoutCallback() {
     if (motionRecorder && motionRecorder.kill(0)) {
@@ -70,16 +74,16 @@ const params = [
     'image2pipe',
     '-vf',
     'fps=2,scale=640:360',
-    '-frames',
-    '1000',
+    //'-frames',
+    //'1000',
     'pipe:1'
 ];
 
 const regions = [
-    {name: 'region1', difference: 10, percent: 10, polygon: [{x: 0, y: 0}, {x: 0, y:360}, {x: 160, y: 360}, {x: 160, y: 0}]},
-    {name: 'region2', difference: 10, percent: 10, polygon: [{x: 160, y: 0}, {x: 160, y: 360}, {x: 320, y: 360}, {x: 320, y: 0}]},
-    {name: 'region3', difference: 10, percent: 10, polygon: [{x: 320, y: 0}, {x: 320, y: 360}, {x: 480, y: 360}, {x: 480, y: 0}]},
-    {name: 'region4', difference: 10, percent: 10, polygon: [{x: 480, y: 0}, {x: 480, y: 360}, {x: 640, y: 360}, {x: 640, y: 0}]}
+    {name: 'region1', difference: 10, percent: 11, polygon: [{x: 0, y: 0}, {x: 0, y:360}, {x: 160, y: 360}, {x: 160, y: 0}]},
+    {name: 'region2', difference: 10, percent: 11, polygon: [{x: 160, y: 0}, {x: 160, y: 360}, {x: 320, y: 360}, {x: 320, y: 0}]},
+    {name: 'region3', difference: 10, percent: 11, polygon: [{x: 320, y: 0}, {x: 320, y: 360}, {x: 480, y: 360}, {x: 480, y: 0}]},
+    {name: 'region4', difference: 10, percent: 11, polygon: [{x: 480, y: 0}, {x: 480, y: 360}, {x: 640, y: 360}, {x: 640, y: 0}]}
 ];
 
 const p2p = new P2P();
@@ -97,17 +101,16 @@ const pd = new PD({grayscale: 'luminosity', regions : regions})
                 name += `_${region.name}-${region.percent}_`;
             }
             const jpeg = `${name}.jpeg`;
-            const jpegPath = `${pathToRecordings}${jpeg}`;
+            const jpegPath = `${pathToRecordings}/${jpeg}`;
             console.log(jpegPath);
             const mp4 = `${name}.mp4`;
-            const mp4Path = `${pathToRecordings}${mp4}`;
+            const mp4Path = `${pathToRecordings}/${mp4}`;
             console.log(mp4Path);
             motionRecorder = spawn('ffmpeg', ['-loglevel', 'quiet', '-f', 'pam_pipe', '-c:v', 'pam', '-i', 'pipe:0', '-re', '-i', pathToHLS, '-map', '1:v', '-an', '-c:v', 'copy', mp4Path, '-map', '0:v', '-c:v', 'mjpeg', '-pix_fmt', 'yuvj422p', '-q:v', '1', '-huffman', 'optimal', jpegPath], {stdio: ['pipe', 'pipe', 'ignore']})
                 .on('error', (error) => {console.log(error);})
                 .on('exit', (code, signal) => {
                     if (code !== 0 && code !== 255) {
-                        console.log('motionRecorder', motionRecorder.spawnargs.join(' '), code, signal);
-                    }
+                        console.log('motionRecorder', motionRecorder.spawnargs.join(' '), code, signal);                    }
                 });
             motionRecorder.stdin.end(data.pam);
             recordingStopper = setTimeout(setTimeoutCallback, timeout);
