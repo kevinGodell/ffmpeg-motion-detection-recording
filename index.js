@@ -7,11 +7,11 @@ const PD = require('pam-diff');
 const spawn = CP.spawn;
 
 //change this to /dev/shm/manifest.m3u8
-const pathToHLS = "/dev/shm/manifest.m3u8";//should be in /dev/shm/manifest.m3u8 to write files in memory and not on disc
+const pathToHLS = '/dev/shm/manifest.m3u8';//should be in /dev/shm/manifest.m3u8 to write files in memory and not on disc
 //increase milliseconds to record longer videos after motion detected
 const timeout = 10000;//10000 = 10 seconds of recorded video, includes buffer of time before motion triggered recording
 //set the directory for the jpegs and mp4 videos to be saved
-const pathToRecordings = "/mnt/data/recordings/";
+const pathToRecordings = '/mnt/data/recordings/';
 
 let recordingStopper = null;//timer used to finish the mp4 recording with sigint after enough time passed with no additional motion events
 let motionRecorder = null;//placeholder for spawned ffmpeg process that will record video to disc
@@ -39,7 +39,7 @@ const params = [
     '-rtsp_transport',
     'tcp',
     '-i',
-    'rtsp://192.168.1.22:554/user=admin_password=pass_channel=1_stream=0.sdp',
+    'rtsp://192.168.1.4:554/user=admin_password=pass_channel=1_stream=0.sdp',
 
     /* output hls video that will used as source for recording when motion triggered */
     '-an',
@@ -76,10 +76,10 @@ const params = [
 ];
 
 const regions = [
-    {name: 'region1', difference: 8, percent: 6, polygon: [{x: 0, y: 0}, {x: 0, y:360}, {x: 160, y: 360}, {x: 160, y: 0}]},
-    {name: 'region2', difference: 8, percent: 6, polygon: [{x: 160, y: 0}, {x: 160, y: 360}, {x: 320, y: 360}, {x: 320, y: 0}]},
-    {name: 'region3', difference: 8, percent: 6, polygon: [{x: 320, y: 0}, {x: 320, y: 360}, {x: 480, y: 360}, {x: 480, y: 0}]},
-    {name: 'region4', difference: 8, percent: 6, polygon: [{x: 480, y: 0}, {x: 480, y: 360}, {x: 640, y: 360}, {x: 640, y: 0}]}
+    {name: 'region1', difference: 10, percent: 10, polygon: [{x: 0, y: 0}, {x: 0, y:360}, {x: 160, y: 360}, {x: 160, y: 0}]},
+    {name: 'region2', difference: 10, percent: 10, polygon: [{x: 160, y: 0}, {x: 160, y: 360}, {x: 320, y: 360}, {x: 320, y: 0}]},
+    {name: 'region3', difference: 10, percent: 10, polygon: [{x: 320, y: 0}, {x: 320, y: 360}, {x: 480, y: 360}, {x: 480, y: 0}]},
+    {name: 'region4', difference: 10, percent: 10, polygon: [{x: 480, y: 0}, {x: 480, y: 360}, {x: 640, y: 360}, {x: 640, y: 0}]}
 ];
 
 const p2p = new P2P();
@@ -92,9 +92,9 @@ const pd = new PD({grayscale: 'luminosity', regions : regions})
         }
         if (recordingStopper === null) {
             const date = new Date();
-            let name = `${date.getUTCFullYear()}-${date.getUTCMonth() + 1}-${date.getUTCDate()}_${date.getHours()}-${date.getUTCMinutes()}-${date.getUTCSeconds()}-${date.getUTCMilliseconds()}`;
+            let name = `${date.getUTCFullYear()}-${date.getUTCMonth() + 1}-${date.getUTCDate()}_${('0'+date.getHours()).substr(-2)}-${('0'+date.getUTCMinutes()).substr(-2)}-${('0'+date.getUTCSeconds()).substr(-2)}-${('00'+date.getUTCMilliseconds()).substr(-3)}`;
             for (const region of data.trigger) {
-                name += `(${region.name}=${region.percent})`;
+                name += `_${region.name}-${region.percent}_`;
             }
             const jpeg = `${name}.jpeg`;
             const jpegPath = `${pathToRecordings}${jpeg}`;
@@ -106,7 +106,7 @@ const pd = new PD({grayscale: 'luminosity', regions : regions})
                 .on('error', (error) => {console.log(error);})
                 .on('exit', (code, signal) => {
                     if (code !== 0 && code !== 255) {
-                        console.log(code, signal);
+                        console.log('motionRecorder', motionRecorder.spawnargs.join(' '), code, signal);
                     }
                 });
             motionRecorder.stdin.end(data.pam);
