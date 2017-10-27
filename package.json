@@ -1,0 +1,26 @@
+{
+  "name": "ffmpeg-motion-detection-recording",
+  "version": "0.0.1",
+  "description": "Use ffmpeg as the source for video motion detection recording",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kevinGodell/ffmpeg-motion-detection-recording.git"
+  },
+  "keywords": [
+    "ffmpeg",
+    "motion",
+    "detection",
+    "recording"
+  ],
+  "author": "Kevin Godell <kevin.godell@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kevinGodell/ffmpeg-motion-detection-recording/issues"
+  },
+  "homepage": "https://github.com/kevinGodell/ffmpeg-motion-detection-recording#readme",
+  "private": true
+}
