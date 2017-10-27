@@ -7,9 +7,11 @@ const PD = require('pam-diff');
 const spawn = CP.spawn;
 
 //change this to /dev/shm/manifest.m3u8
-const pathToHLS = "manifest.m3u8";//should be in /dev/shm/manifest.m3u8 to write files in memory and not on disc
+const pathToHLS = "/dev/shm/manifest.m3u8";//should be in /dev/shm/manifest.m3u8 to write files in memory and not on disc
 //increase milliseconds to record longer videos after motion detected
 const timeout = 10000;//10000 = 10 seconds of recorded video, includes buffer of time before motion triggered recording
+//set the directory for the jpegs and mp4 videos to be saved
+const pathToRecordings = "/mnt/data/recordings/";
 
 let recordingStopper = null;//timer used to finish the mp4 recording with sigint after enough time passed with no additional motion events
 let motionRecorder = null;//placeholder for spawned ffmpeg process that will record video to disc
@@ -35,9 +37,9 @@ const params = [
 
     /* use an rtsp ip cam video input */
     '-rtsp_transport',
-     'tcp',
-     '-i',
-     'rtsp://192.168.1.22:554/user=admin_password=pass_channel=1_stream=0.sdp',
+    'tcp',
+    '-i',
+    'rtsp://192.168.1.22:554/user=admin_password=pass_channel=1_stream=0.sdp',
 
     /* output hls video that will used as source for recording when motion triggered */
     '-an',
@@ -56,7 +58,7 @@ const params = [
     '-hls_flags',
     '+delete_segments+omit_endlist',
     pathToHLS,
-    
+
     /* output pam image that is used as source for motion detection analysis */
     '-an',
     '-c:v',
@@ -95,14 +97,18 @@ const pd = new PD({grayscale: 'luminosity', regions : regions})
                 name += `(${region.name}=${region.percent})`;
             }
             const jpeg = `${name}.jpeg`;
+            const jpegPath = `${pathToRecordings}${jpeg}`;
+            console.log(jpegPath);
             const mp4 = `${name}.mp4`;
-            motionRecorder = spawn('ffmpeg', ['-loglevel', 'quiet', '-f', 'pam_pipe', '-c:v', 'pam', '-i', 'pipe:0', '-re', '-i', pathToHLS, '-map', '1:v', '-an', '-c:v', 'copy', mp4, '-map', '0:v', '-c:v', 'mjpeg', '-pix_fmt', 'yuvj422p', '-q:v', '1', '-huffman', 'optimal', jpeg], {stdio: ['pipe', 'pipe', 'ignore']})
-                .on('error', (error) => {console.log(error)})
+            const mp4Path = `${pathToRecordings}${mp4}`;
+            console.log(mp4Path);
+            motionRecorder = spawn('ffmpeg', ['-loglevel', 'quiet', '-f', 'pam_pipe', '-c:v', 'pam', '-i', 'pipe:0', '-re', '-i', pathToHLS, '-map', '1:v', '-an', '-c:v', 'copy', mp4Path, '-map', '0:v', '-c:v', 'mjpeg', '-pix_fmt', 'yuvj422p', '-q:v', '1', '-huffman', 'optimal', jpegPath], {stdio: ['pipe', 'pipe', 'ignore']})
+                .on('error', (error) => {console.log(error);})
                 .on('exit', (code, signal) => {
-                if (code !== 0 && code !== 255) {
-                    console.log(code, signal);
-                }
-            });
+                    if (code !== 0 && code !== 255) {
+                        console.log(code, signal);
+                    }
+                });
             motionRecorder.stdin.end(data.pam);
             recordingStopper = setTimeout(setTimeoutCallback, timeout);
             console.log(`recording started for video ${mp4}`);
