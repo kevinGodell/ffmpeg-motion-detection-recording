@@ -24,8 +24,8 @@
   "homepage": "https://github.com/kevinGodell/ffmpeg-motion-detection-recording#readme",
   "private": true,
   "dependencies": {
-    "pam-diff": "^0.8.5",
+    "pam-diff": "^0.12.1",
     "pipe2pam": "^0.6.0",
-    "polygon-points": "^0.4.0"
+    "polygon-points": "^0.5.1"
   }
 }
